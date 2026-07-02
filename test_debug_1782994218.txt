@@ -1,0 +1,42 @@
+<?php
+require_once __DIR__ . '/config.php';
+
+// 模拟上传流程：读取文件 → base64 → PUT 到 GitHub
+$testFile = __FILE__; // 用当前文件测试
+$content = file_get_contents($testFile);
+$b64 = base64_encode($content);
+
+$apiUrl = "https://api.github.com/repos/" . GITHUB_OWNER . "/" . GITHUB_REPO . "/contents/test_debug_" . time() . ".txt";
+$body = json_encode([
+    'message' => 'debug test',
+    'content' => $b64,
+    'branch' => 'main'
+]);
+
+echo "Token prefix: " . substr(GITHUB_TOKEN, 0, 8) . "...\n";
+echo "API URL: $apiUrl\n";
+echo "Body size: " . strlen($body) . " bytes\n";
+echo "File content size: " . strlen($content) . " bytes\n\n";
+
+$ch = curl_init($apiUrl);
+curl_setopt_array($ch, [
+    CURLOPT_CUSTOMREQUEST => 'PUT',
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER => [
+        'Authorization: token ' . GITHUB_TOKEN,
+        'Accept: application/vnd.github.v3+json',
+        'Content-Type: application/json',
+        'User-Agent: wgxhw-upload'
+    ],
+    CURLOPT_POSTFIELDS => $body,
+    CURLOPT_TIMEOUT => 30,
+    CURLOPT_SSL_VERIFYPEER => true,
+]);
+$resp = curl_exec($ch);
+$code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$err = curl_error($ch);
+curl_close($ch);
+
+echo "HTTP Status: $code\n";
+if ($err) echo "cURL Error: $err\n";
+echo "Response: " . $resp . "\n";
